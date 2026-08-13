@@ -94,15 +94,6 @@ Measured on desktop Chrome (M-class laptop):
   same-interface main-thread parser.
 - The web client is a single vanilla HTML/CSS/JS file — easy to audit end to end.
 
-## Design notes
-
-The visual design was deliberately rebuilt twice. The first pass leaned on the gradient
-+ emoji + soft-shadow-card look that reads as "AI-generated"; it was thrown out. A
-terminal/monospace direction followed, and the current design is **editorial/archival** —
-warm paper, an oxblood accent, a serif reading pane — chosen because the core act is
-*reading your own past*, which is a library, not a dashboard. Structure comes from
-hairline rules and whitespace rather than boxes.
-
 ## Non-goals
 
 No cloud, no LLM calls, no "continue this chat." chatlens reads and understands your
