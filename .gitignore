@@ -1,0 +1,14 @@
+# Your personal exports live here during local testing.
+# NEVER commit or publish these — they are your private chat history.
+json/
+*.zip
+conversations.json
+
+# OS cruft
+.DS_Store
+
+# Local test artifacts
+_manifest.json
+
+# Playwright test artifacts
+.playwright-mcp/
