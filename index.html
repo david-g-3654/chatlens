@@ -1063,36 +1063,59 @@ function makeSample(){
 
   // ---------- file handling ----------
   const drop=$('#drop'), fileInput=$('#fileInput'), folderInput=$('#folderInput');
+  const landing=$('#landing');
   drop.onclick=()=>fileInput.click();
   if($('#folderLink')) $('#folderLink').onclick=e=>{ e.preventDefault(); e.stopPropagation(); folderInput.click(); };
   fileInput.onchange=e=>{ if(e.target.files.length) readFiles(e.target.files); };
   if(folderInput) folderInput.onchange=e=>{ if(e.target.files.length) readFiles(e.target.files); };
+
   ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
-  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();if(ev==='dragleave'&&drop.contains(e.relatedTarget))return;drop.classList.remove('over');}));
-  drop.addEventListener('drop',e=>{ e.preventDefault(); drop.classList.remove('over'); handleDrop(e); });
-  // also accept drop anywhere on landing
-  const landing=$('#landing');
-  ['dragover','drop'].forEach(ev=>landing.addEventListener(ev,e=>e.preventDefault()));
-  landing.addEventListener('drop',e=>{ if(!state.loaded) handleDrop(e); });
+  drop.addEventListener('dragleave',e=>{ if(!drop.contains(e.relatedTarget)) drop.classList.remove('over'); });
+  // Route EVERY drop on the landing (which contains the dropzone) through ONE
+  // handler — registering on both #drop and #landing fires it twice and the
+  // second pass wipes the folder entries, so folder drops falsely report "no files".
+  landing.addEventListener('dragover',e=>e.preventDefault());
+  landing.addEventListener('drop',onDrop);
+  let dropBusy=false;
 
   function showProgress(pct,label){ const p=$('#progress'); p.classList.add('on');
     $('#progBar').style.width=Math.round(pct*100)+'%'; $('#progLbl').textContent=label; }
 
-  // Drag-drop may deliver individual files, multiple files, or a whole folder.
-  async function handleDrop(e){
+  // A drop may carry a single file, multiple files, or a whole folder.
+  async function onDrop(e){
+    e.preventDefault();
+    drop.classList.remove('over');
+    if(state.loaded || dropBusy) return;
     const dt=e.dataTransfer; if(!dt) return;
-    let files=[];
+    dropBusy=true;
+    // dataTransfer is only valid during the event — grab entries synchronously,
+    // BEFORE any await, or the folder listing is lost.
+    const entries=[];
     const items=dt.items;
     if(items && items.length && items[0] && items[0].webkitGetAsEntry){
-      const entries=[];
-      for(const it of items){ const en=it.webkitGetAsEntry&&it.webkitGetAsEntry(); if(en) entries.push(en); }
-      if(entries.some(en=>en&&en.isDirectory)){
-        showProgress(0.05,'Scanning folder…');
-        for(const en of entries){ await walkEntry(en, files); }
+      for(let i=0;i<items.length;i++){
+        try{ const en=items[i].webkitGetAsEntry(); if(en) entries.push(en); }catch(_){}
       }
     }
-    if(!files.length) files=[...dt.files];
-    readFiles(files);
+    const looseFiles=[...(dt.files||[])];
+    try{
+      let files=[];
+      if(entries.length){
+        if(entries.some(en=>en && en.isDirectory)) showProgress(0.05,'Scanning folder…');
+        for(const en of entries){ await walkEntry(en, files); }
+      }
+      if(!files.length) files=looseFiles;   // browsers don't populate dt.files for folder drops
+      if(!files.length){
+        $('#progress').classList.remove('on');
+        toast('Couldn’t read that drop here — click “select a whole folder” instead');
+        dropBusy=false; return;
+      }
+      await readFiles(files);
+    }catch(err){
+      $('#progress').classList.remove('on');
+      toast('Couldn’t read that drop — try the “select a whole folder” button');
+      dropBusy=false;
+    }
   }
   function walkEntry(entry, out){
     return new Promise(res=>{
@@ -1114,7 +1137,7 @@ function makeSample(){
     let files=[...fileList].filter(f=>/\.json$/i.test(f.name) || f.type==='application/json');
     if(!files.length){ $('#progress').classList.remove('on'); toast('No .json files found — pick a conversations.json or an export folder'); return; }
     const many=files.length>1;
-    showProgress(0.1, many ? ('Reading '+files.length+' files…') : ('Reading '+files.name+' …'));
+    showProgress(0.1, many ? ('Reading '+files.length+' files…') : ('Reading '+files[0].name+' …'));
     const texts=[];
     for(let i=0;i<files.length;i++){
       try{ texts.push(await files[i].text()); }
