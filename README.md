@@ -94,6 +94,9 @@ Measured on desktop Chrome (M-class laptop):
   same-interface main-thread parser.
 - The web client is a single vanilla HTML/CSS/JS file — easy to audit end to end.
 
+See **[PRIVACY.md](PRIVACY.md)** for a 2-minute checklist to verify the local-only
+behavior yourself (offline test, Network tab, reload-disposal, source grep).
+
 ## Non-goals
 
 No cloud, no LLM calls, no "continue this chat." chatlens reads and understands your
